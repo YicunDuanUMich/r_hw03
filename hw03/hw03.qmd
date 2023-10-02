@@ -1,0 +1,752 @@
+
+---
+title: "Problem Set 3"
+format: 
+  html:
+    embed-resources: true
+    toc: true
+    toc-location: right
+    toc-title: "Content"
+editor: visual
+---
+
+## About this file
+
+This is the Yicun Duan's (umich id: 62178151) report of STAT 506's Problem Set 3. Here is the link to my [GitHub repository]().
+
+## Problem 1
+
+
+### a
+
+We merge VIX_D and DEMO_D on variable `SEQN` to create a single dataset. We use command `display _N` to show the total sample size.
+
+```stata
+. clear
+
+. // Load data\VIX_D.
+. import sasxport5 "L:\umich\stat506\hw03\data\VIX_D.XPT", clear
+
+. // Save data\VIX_D as data\vid_d.
+. save "L:\umich\stat506\hw03\data\vid_d.dta", replace
+file L:\umich\stat506\hw03\data\vid_d.dta saved
+
+. 
+. // Load data\DEMO_D.
+. import sasxport5 "L:\umich\stat506\hw03\data\DEMO_D.XPT", clear
+
+. // Save data\DEMO_D as data\DEMO_D.
+. save "L:\umich\stat506\hw03\data\demo_d.dta", replace
+file L:\umich\stat506\hw03\data\demo_d.dta saved
+
+. 
+. // Reopen the data\VIX_D.
+. use "L:\umich\stat506\hw03\data\vid_d.dta", clear
+
+. // Merge data.
+. merge 1:1 seqn using "L:\umich\stat506\hw03\data\demo_d.dta",  keep(match)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                             6,980  (_merge==3)
+    -----------------------------------------
+
+. 
+. // Show the total number.
+. display _N
+6980
+
+. 
+. // Rename the columns for easy understanding.
+. rename viq220 glass_wear
+
+. rename ridageyr age_year
+
+. rename riagendr gender
+
+. rename ridreth1 race
+
+. rename indfmpir pir
+
+. 
+
+```
+
+### b
+
+You can see our table in the output of command `tabulate age_categories`.
+
+```stata
+. preserve
+
+. 
+. // Keep the records of respondents who wear glasses/contact lenses for distance vision.
+. keep if (glass_wear == 1 & !missing(glass_wear)) /// 
+>         & age_year >= 0 & !missing(age_year)
+(4,215 observations deleted)
+
+. // Generate a new variable to show the age categories.
+. generate age_categories=recode(age_year, 9, 19, 29, 39, 49, 59, 69, 79, 89)
+
+. label define rename_age_cat 9 "[0, 9]" 19 "[10, 19]" 29 "[20, 29]" 39 "[30, 39]" ///
+>                             49 "[40, 49]" 59 "[50, 59]" 69 "[60, 69]" 79 "[70, 79]" ///
+>                             89 "[80, 89]"
+
+. // Rename the labels for clear display.
+. label values age_categories rename_age_cat
+
+. label variable age_categories "Age Categories"
+
+. tabulate age_categories
+
+        Age |
+ Categories |      Freq.     Percent        Cum.
+------------+-----------------------------------
+   [10, 19] |        670       24.23       24.23
+   [20, 29] |        306       11.07       35.30
+   [30, 39] |        269        9.73       45.03
+   [40, 49] |        286       10.34       55.37
+   [50, 59] |        335       12.12       67.49
+   [60, 69] |        392       14.18       81.66
+   [70, 79] |        299       10.81       92.48
+   [80, 89] |        208        7.52      100.00
+------------+-----------------------------------
+      Total |      2,765      100.00
+
+. 
+. restore
+
+```
+
+### c
+
+We fit three logistic regression models to predict whether a respondent wears glasses/contact lenses for distance vision with age (i.e. model `gw_a`) / age, race, gender (i.e., model `gw_arg`) / age, race, gender, Poverty Income Ratio (i.e., model `gw_argp`) as predictors. The summary of the estimated odds ratios for the coefficients in each model, along with the sample size for the model, the pseudo-$R^2$, and AIC values, can be found in matrix `report_matrix`. 
+
+```stata
+. // Remove the missing data and invalid data from glass_wear and age_year.
+. keep if (glass_wear == 1 | glass_wear == 2) & !missing(glass_wear) ///
+>         & age_year >= 0 & !missing(age_year)
+(435 observations deleted)
+
+. // Originally, 1 means the respondent wears glasses,
+. // and 2 means the repondent doesn't wear glasses.
+. // We replace glass_wear == 2 to 1.
+. replace glass_wear = 0 if glass_wear == 2
+(3,780 real changes made)
+
+. // Fit logistic regression model with glass_wear as response and age as predictor.
+. logistic glass_wear c.age_year
+
+Logistic regression                                     Number of obs =  6,545
+                                                        LR chi2(1)    = 443.37
+                                                        Prob > chi2   = 0.0000
+Log likelihood = -4235.9433                             Pseudo R2     = 0.0497
+
+------------------------------------------------------------------------------
+  glass_wear | Odds ratio   Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+    age_year |    1.02498   .0012356    20.47   0.000     1.022561    1.027405
+       _cons |    .283379   .0151461   -23.59   0.000     .2551952    .3146755
+------------------------------------------------------------------------------
+Note: _cons estimates baseline odds.
+
+. // Estimate AIC.
+. estat ic
+
+Akaike's information criterion and Bayesian information criterion
+
+-----------------------------------------------------------------------------
+       Model |          N   ll(null)  ll(model)      df        AIC        BIC
+-------------+---------------------------------------------------------------
+           . |      6,545  -4457.627  -4235.943       2   8475.887    8489.46
+-----------------------------------------------------------------------------
+Note: BIC uses N = number of observations. See [R] IC note.
+
+. // Store the related information
+. matrix gw_a_coef = e(b)
+
+. local gw_a_N e(N)
+
+. local gw_a_r2_p e(r2_p)
+
+. local gw_a_aic r(S)[1, 5]
+
+. matrix gw_a_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
+
+. estimates store gw_a
+
+. 
+. // Remove the missing data from race and gender.
+. keep if !missing(race) & !missing(gender)
+(0 observations deleted)
+
+. // Fit logistic regression model with glass_wear as response, 
+. // age, race, gender as predictors.
+. logistic glass_wear c.age i.race i.gender
+
+Logistic regression                                     Number of obs =  6,545
+                                                        LR chi2(6)    = 641.49
+                                                        Prob > chi2   = 0.0000
+Log likelihood = -4136.8805                             Pseudo R2     = 0.0720
+
+------------------------------------------------------------------------------
+  glass_wear | Odds ratio   Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+    age_year |   1.022831   .0012912    17.88   0.000     1.020303    1.025365
+             |
+        race |
+          2  |   1.169203    .192081     0.95   0.341     .8473273    1.613349
+          3  |   1.952149   .1366952     9.55   0.000     1.701803    2.239322
+          4  |    1.29936   .0995052     3.42   0.001     1.118264    1.509783
+          5  |   1.917442   .2596352     4.81   0.000     1.470495    2.500236
+             |
+    2.gender |    1.65217   .0875831     9.47   0.000     1.489127    1.833064
+       _cons |   .1593479   .0124169   -23.57   0.000     .1367784    .1856414
+------------------------------------------------------------------------------
+Note: _cons estimates baseline odds.
+
+. // Estimate AIC.
+. estat ic
+
+Akaike's information criterion and Bayesian information criterion
+
+-----------------------------------------------------------------------------
+       Model |          N   ll(null)  ll(model)      df        AIC        BIC
+-------------+---------------------------------------------------------------
+           . |      6,545  -4457.627   -4136.88       7   8287.761   8335.266
+-----------------------------------------------------------------------------
+Note: BIC uses N = number of observations. See [R] IC note.
+
+. // Store the related information.
+. matrix gw_arg_coef = e(b)
+
+. local gw_arg_N e(N)
+
+. local gw_arg_r2_p e(r2_p)
+
+. local gw_arg_aic r(S)[1, 5]
+
+. matrix gw_arg_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
+
+. estimates store gw_arg
+
+. 
+. // Remove the missing data from pir.
+. keep if !missing(pir)
+(298 observations deleted)
+
+. // Fit a logistic regression model with glass_wear as reponse,
+. // age, race, gender and pir as predictors.
+. logistic glass_wear c.age i.race i.gender c.pir
+
+Logistic regression                                     Number of obs =  6,247
+                                                        LR chi2(7)    = 625.30
+                                                        Prob > chi2   = 0.0000
+Log likelihood = -3946.9041                             Pseudo R2     = 0.0734
+
+------------------------------------------------------------------------------
+  glass_wear | Odds ratio   Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+    age_year |   1.022436    .001324    17.14   0.000     1.019845    1.025035
+             |
+        race |
+          2  |   1.123021   .1889653     0.69   0.490     .8075333    1.561764
+          3  |   1.651244   .1240886     6.67   0.000     1.425098    1.913277
+          4  |   1.230456   .0974736     2.62   0.009     1.053503     1.43713
+          5  |   1.703572   .2387583     3.80   0.000     1.294384    2.242114
+             |
+    2.gender |   1.675767   .0910025     9.51   0.000      1.50657    1.863967
+         pir |   1.120301   .0198376     6.42   0.000     1.082087    1.159865
+       _cons |   .1331659   .0116903   -22.97   0.000     .1121161    .1581678
+------------------------------------------------------------------------------
+Note: _cons estimates baseline odds.
+
+. // Estimate AIC.
+. estat ic
+
+Akaike's information criterion and Bayesian information criterion
+
+-----------------------------------------------------------------------------
+       Model |          N   ll(null)  ll(model)      df        AIC        BIC
+-------------+---------------------------------------------------------------
+           . |      6,247  -4259.553  -3946.904       8   7909.808   7963.727
+-----------------------------------------------------------------------------
+Note: BIC uses N = number of observations. See [R] IC note.
+
+. // Store related information.
+. matrix gw_argp_coef = e(b)
+
+. local gw_argp_N e(N)
+
+. local gw_argp_r2_p e(r2_p)
+
+. local gw_argp_aic r(S)[1, 5]
+
+. matrix gw_argp_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
+
+. estimates store gw_argp
+
+. 
+. // Use MATA to process the regression information.
+. mata:
+------------------------------------------------- mata (type end to exit) ----------------------------------------------------------------------------------------------------
+: gw_a_coef = st_matrix("gw_a_coef")
+
+: gw_a_nra_matrix = st_matrix("gw_a_nra_matrix")
+
+: gw_arg_coef = st_matrix("gw_arg_coef")
+
+: gw_arg_nra_matrix = st_matrix("gw_arg_nra_matrix")
+
+: gw_argp_coef = st_matrix("gw_argp_coef")
+
+: gw_argp_nra_matrix = st_matrix("gw_argp_nra_matrix")
+
+: 
+: // Arrange the information.
+: gw_a = (exp(gw_a_coef[1, 1]), J(1, 8, 0), exp(gw_a_coef[1, 2]), gw_a_nra_matrix)
+
+: gw_arg = (exp(gw_arg_coef[1, 1..8]), 0, exp(gw_arg_coef[1, 9]), gw_arg_nra_matrix)
+
+: gw_argp = (exp(gw_argp_coef), gw_argp_nra_matrix)
+
+: 
+: report_matrix = (gw_a \ gw_arg \ gw_argp)
+
+: 
+: st_matrix("report_matrix", report_matrix)
+
+: end
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+. 
+. // Rename the columns and rows of the matrix for clear display.
+. matrix colnames report_matrix = "age_year" ///
+>                                 "1b.race" "2.race" "3.race" "4.race" "5.race" ///
+>                                 "1b.gender" "2.gender" ///
+>                                 "pir" "_cons" ///
+>                                 "N" "R2" "AIC"
+
+. matrix rownames report_matrix = "gw_a" "gw_arg" "gw_argp"
+
+. 
+. matrix list report_matrix
+
+report_matrix[3,13]
+                           1b.         2.         3.         4.         5.        1b.         2.                                                       
+          age_year       race       race       race       race       race     gender     gender        pir      _cons          N         R2        AIC
+   gw_a  1.0249798          0          0          0          0          0          0          0          0  .28337901       6545  .04973123  8475.8866
+ gw_arg  1.0228309          1  1.1692027  1.9521488  1.2993601  1.9174418          1  1.6521699          0  .15934788       6545  .07195445  8287.7609
+gw_argp  1.0224363          1  1.1230212  1.6512439  1.2304557  1.7035717          1  1.6757675  1.1203014   .1331659       6247  .07339952  7909.8082
+
+```
+
+### d
+
+As shown in the output of logistic regression model, the z-statistic of `2.gender` is 9.51 and the p-value is 0.000, which demonstrates that the estimated odds of `2.gender` is significantly different from 0 and, in other words, odds of men and women being wears of glasess/contact lenses for distance vision differs. We also test the proportion of wears of glasses/contact lenses for distance vision with respect to male and female. The result of `tabulate` command shows that there is about 37.14% men wearing glasses/contact lenses which is lower than that of women (i.e., 47.62%). 
+
+```stata
+. // Replay the regression.
+. logistic
+
+Logistic regression                                     Number of obs =  6,247
+                                                        LR chi2(7)    = 625.30
+                                                        Prob > chi2   = 0.0000
+Log likelihood = -3946.9041                             Pseudo R2     = 0.0734
+
+------------------------------------------------------------------------------
+  glass_wear | Odds ratio   Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+    age_year |   1.022436    .001324    17.14   0.000     1.019845    1.025035
+             |
+        race |
+          2  |   1.123021   .1889653     0.69   0.490     .8075333    1.561764
+          3  |   1.651244   .1240886     6.67   0.000     1.425098    1.913277
+          4  |   1.230456   .0974736     2.62   0.009     1.053503     1.43713
+          5  |   1.703572   .2387583     3.80   0.000     1.294384    2.242114
+             |
+    2.gender |   1.675767   .0910025     9.51   0.000      1.50657    1.863967
+         pir |   1.120301   .0198376     6.42   0.000     1.082087    1.159865
+       _cons |   .1331659   .0116903   -22.97   0.000     .1121161    .1581678
+------------------------------------------------------------------------------
+Note: _cons estimates baseline odds.
+
+. 
+. // Show the the proportion of wearers of glasses/contact lenses for distance vision
+. // with respect to men and women
+. label define rename_gender 1 "Male" 2 "Female", replace
+
+. label values gender rename_gender
+
+. label define rename_glass_wear 0 "No" 1 "Yes", replace
+
+. label values glass_wear rename_glass_wear
+
+. tabulate gender glass_wear, row
+
++----------------+
+| Key            |
+|----------------|
+|   frequency    |
+| row percentage |
++----------------+
+
+           |    Glasses/contact
+           |    lenses worn for
+           |       distance
+    Gender |        No        Yes |     Total
+-----------+----------------------+----------
+      Male |     1,919      1,134 |     3,053 
+           |     62.86      37.14 |    100.00 
+-----------+----------------------+----------
+    Female |     1,673      1,521 |     3,194 
+           |     52.38      47.62 |    100.00 
+-----------+----------------------+----------
+     Total |     3,592      2,655 |     6,247 
+           |     57.50      42.50 |    100.00 
+
+. 
+
+```
+
+## Problem 2
+
+### a
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 2-a"
+#| warning: true
+#| error: true
+
+rm(list = ls())
+setwd("O:\\dyc\\OneDrive - Umich\\umich\\stat506\\hw03")
+
+library(DBI)
+
+sakila <- dbConnect(RSQLite::SQLite(), "./data/sakila-sqlite3-main/sakila_master.db")
+
+sakila_query <- function(query_str) {
+  dbGetQuery(sakila, query_str)
+}
+
+sakila_query("
+SELECT DISTINCT(language_id)
+  FROM film
+             ")
+
+```
+
+
+### b
+
+As shown in the SQL and R outputs, the Sports is the most common genre of movies and there are 74 Sports movies in the dataset.
+
+**SQL implementation**:
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 2-b"
+#| warning: true
+#| error: true
+
+sakila_query("
+SELECT c.name, COUNT(ffc.category_id) AS genre_count 
+  FROM (SELECT f.film_id, fc.category_id
+          FROM film AS f 
+               LEFT JOIN film_category AS fc 
+                      ON f.film_id = fc.film_id) AS ffc
+        LEFT JOIN category AS c ON ffc.category_id = c.category_id
+ GROUP BY ffc.category_id
+ ORDER BY -genre_count
+ LIMIT 5
+             ")
+
+```
+
+**R implementation**:
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 2-b"
+#| warning: true
+#| error: true
+
+film_table <- sakila_query("
+SELECT *
+  FROM film
+                           ")
+
+film_category_table <- sakila_query("
+SELECT *
+  FROM film_category
+                                    ")
+
+category_table <- sakila_query("
+SELECT *
+  FROM category
+                               ")
+# `film_table` left joins `film_category_table` on the key `film_id`, 
+# and then we select `film_id` and `category_id` from the merged table.
+ffc_table <- merge(x = film_table, y = film_category_table,
+                   by.x = "film_id", by.y = "film_id", 
+                   all.x = TRUE)[, c("film_id", "category_id")]
+
+# `ffc_table` left joins `category_table` on the key `category_id`,
+# and then we select `name` and `category_id` from the merged table.
+ffcc_table <- merge(x = ffc_table, y = category_table,
+                    by.x = "category_id", by.y = "category_id",
+                    all.x = TRUE)[, c("name", "category_id")]
+
+# Count.
+genre_names <- vector("character", length = length(unique(ffcc_table$name)))
+genre_counts <- vector("double", length = length(unique(ffcc_table$category_id)))
+i <- 1
+for (id in unique(ffcc_table$category_id)) {
+  genre_names[i] <- ffcc_table$name[ which(ffcc_table$category_id == id)[1] ]
+  genre_counts[i] <- sum(ffcc_table$category_id == id)
+  i <- i + 1
+}
+
+genre_result <- data.frame(name = genre_names, genre_counts = genre_counts)
+
+# Order by `genre_counts`.
+head(genre_result[order(genre_result$genre_counts, decreasing = TRUE), ])
+
+```
+
+
+### c
+
+The United Kingdom has exactly 9 customers.
+
+**SQL implementation**:
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 2-c"
+#| warning: true
+#| error: true
+
+sakila_query("
+SELECT co.country, COUNT(cca.country_id) AS customer_count
+  FROM (SELECT ca.customer_id, ci.country_id 
+          FROM (SELECT c.customer_id, a.address_id, a.city_id
+                  FROM customer AS c
+                       LEFT JOIN address AS a 
+                              ON c.address_id = a.address_id) AS ca
+                LEFT JOIN city AS ci 
+                       ON ca.city_id = ci.city_id) AS cca
+       LEFT JOIN country AS co
+              ON cca.country_id = co.country_id
+ WHERE cca.country_id IS NOT NULL AND co.country IS NOT NULL
+ GROUP BY cca.country_id
+ HAVING customer_count == 9
+             ")
+
+```
+
+**R implementation**:
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 2-c"
+#| warning: true
+#| error: true
+
+customer_table <- sakila_query("
+SELECT * 
+  FROM customer
+                               ")
+
+address_table <- sakila_query("
+SELECT *
+  FROM address
+                              ")
+
+city_table <- sakila_query("
+SELECT *
+  FROM city
+                              ")
+
+country_table <- sakila_query("
+SELECT *
+  FROM country
+                              ")
+
+# `customer_table`left joins `address_table` on the key `address_id`,
+# and then we select `customer_id` `city_id` from the merged table.
+ca_table <- merge(x = customer_table, y = address_table,
+                  by.x = "address_id", by.y = "address_id",
+                  all.x = TRUE)[, c("customer_id", "city_id")]
+
+# `ca_table` left joins `city_table` on the key `city_id`,
+# and then we select `customer_id` and `country_id` from the merged table.
+cca_table <- merge(x = ca_table, y = city_table,
+                   by.x = "city_id", by.y = "city_id",
+                   all.x = TRUE)[, c("customer_id", "country_id")]
+
+# `cca_table` left joins `country_table` on the key `country_id`,
+# and then we select `customer_id`, `country_id` and `country` from the merged table.
+ccca_table <- merge(x = cca_table, y = country_table,
+                    by.x = "country_id", by.y = "country_id",
+                    all.x = TRUE)[, c("customer_id", "country_id", "country")]
+
+# Count.
+country_names <- vector("character", length = length(unique(ccca_table$country)))
+customer_counts <- vector("double", length = length(unique(ccca_table$country_id)))
+i <- 1
+for (id in unique(ccca_table$country_id)) {
+  country_names[i] <- ccca_table$country[ which(ccca_table$country_id == id)[1] ]
+  customer_counts[i] <- sum(ccca_table$country_id == id)
+  i <- i + 1
+}
+
+country_result <- data.frame(country = country_names, customer_counts = customer_counts)
+
+# Where `customer_counts` == 9.
+country_result[country_result$customer_counts == 9, ]
+
+
+```
+
+## Problem 3
+
+### a
+
+There are 12 email addresses with TLD ".net".
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 3-a"
+#| warning: true
+#| error: true
+
+rm(list = ls())
+
+us_500_records <- read.table("./data/us-500/us-500.csv", sep = ",", header = TRUE)
+
+us_500_records$email[grepl(".net$", us_500_records$email)]
+
+```
+
+### b
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 3-b"
+#| warning: true
+#| error: true
+
+us_500_records$email[grepl("[^a-zA-Z0-9@\\.]+", us_500_records$email)]
+
+```
+
+
+### c
+
+The most common area code is "973".
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 3-c"
+#| warning: true
+#| error: true
+
+all_phones <- c(us_500_records$phone1, us_500_records$phone2)
+area_code_all_phones <- sapply(all_phones, substr, start = 1, stop = 3, USE.NAMES = FALSE)
+
+# Count.
+area_codes <- vector("character", length = length(unique(area_code_all_phones)))
+area_code_counts <- vector("double", length = length(unique(area_code_all_phones)))
+i <- 1
+for (area_code in unique(area_code_all_phones)) {
+  area_codes[i] <- area_code
+  area_code_counts[i] <- sum(area_code_all_phones == area_code)
+  i <- i + 1
+}
+
+area_code_count_result <- data.frame(area_codes = area_codes, area_code_counts = area_code_counts)
+
+# Order by `area_code_counts`.
+head(area_code_count_result[order(area_code_count_result$area_code_counts, decreasing = TRUE),])
+
+```
+
+### d
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 3-d"
+#| warning: true
+#| error: true
+
+apartment_numbers_str <- gsub("^[0-9]+[a-zA-Z \\#]+[0-9]*[a-zA-Z \\#]+([0-9]+).*$", "\\1", us_500_records$address)
+apartment_numbers_str <- apartment_numbers_str[grepl("^[0-9]+$", apartment_numbers_str)]
+apartment_numbers <- as.numeric(apartment_numbers_str)
+
+hist(log(apartment_numbers))
+```
+
+### e
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 3-e"
+#| warning: true
+#| error: true
+
+leading_digits <- as.numeric(sapply(apartment_numbers_str, substr, start = 1, stop = 1))
+
+check_benford <- function(input_digits) {
+  benford_dist <- function(d) {
+    return(log(1 + 1 / d, base = 10))
+  }
+  
+  input_digits_count <- vector("double", length = 9)
+  input_digits_density <- vector("double", length = 9)
+  n <- length(input_digits)
+  
+  for (i in 1:9) {
+    input_digits_count[i] <- sum(input_digits == i)
+    input_digits_density[i] <- input_digits_count[i] / n
+  }
+  
+  density_for_plot <- matrix(c(input_digits_density, sapply(1:9, benford_dist)), ncol=2)
+  matplot(1:9, density_for_plot, 
+          type = c("b"), pch=1, col = 3:4,
+          xlab = "Digit", ylab = "Density",
+          xlim = c(0, 10))
+  legend("topright", legend = c("Input", "Benford"), col=3:4, pch=1)
+  
+  benford_chi_statistic <- 0
+  for (i in 1:9) {
+    benford_chi_statistic <- benford_chi_statistic + input_digits_count[i]^2 / (n * benford_dist(i))
+  }
+  
+  benford_chi_statistic <- benford_chi_statistic - n
+  benford_p_value <- 1 - pchisq(benford_chi_statistic, df = 9 - 1)
+  cat("chi-statistic:", benford_chi_statistic, ", p-value:", benford_p_value)
+}
+
+check_benford(leading_digits)
+
+```
+
+### f
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 3-f"
+#| warning: true
+#| error: true
+
+street_numbers_str <- gsub("^([0-9])+.*$", "\\1", us_500_records$address)
+street_numbers_str <- street_numbers_str[grepl("^[0-9]+$", street_numbers_str)]
+street_numbers <- as.numeric(street_numbers_str)
+
+last_char <- function(x){
+  substr(x, nchar(x), nchar(x))
+}
+
+last_digits <- as.numeric(sapply(street_numbers_str, last_char))
+
+check_benford(last_digits)
+```
