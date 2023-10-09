@@ -56,12 +56,11 @@ file L:\umich\stat506\r_hw03\hw03\data\demo_d.dta saved
 . // Show the total number.
 . display _N
 6980
-
 ```
 
 We rename the columns according to the instruction of [VIX_D](https://wwwn.cdc.gov/Nchs/Nhanes/2005-2006/VIX_D.htm) and [DEMO_D](https://wwwn.cdc.gov/Nchs/Nhanes/2005-2006/DEMO_D.htm). `viq220` shows whether the respondents wear glasses/contact lenses for distance, where `1` refers to Yes, `2` refers to No and `9` refers to "Don't know". The `ridageyr` is the age at screening adjudicated, ranging from 0 to 85. `riagendr` is the gender of the sample person, where `1` represents Male and `2` represents Female. `ridreth1` records the race information, with `1, 2, 3, 4, 5` as the signs of five different races. `indfmpir` indicates the continuous variable Poverty Income Ratio (PIR) with minimum 0.0 and maximum 5.0.
 
-```stata
+``` stata
 . // Rename the columns for easy understanding.
 . rename viq220 glass_wear
 
@@ -76,7 +75,7 @@ We rename the columns according to the instruction of [VIX_D](https://wwwn.cdc.g
 
 ### b
 
-You can see our table, which demonstrates the proportion of respondents within each 10-year age bracket (e.g. 0-9, 10-19, 20-29, etc) who wear glasses/contact lenses for distance vision, in the output of `tabulate age_categories`. We refer to the Example 3 of [tabulate_doc](https://www.stata.com/manuals/rtabulateoneway.pdf) to craft this table. 
+You can see our table, which demonstrates the proportion of respondents within each 10-year age bracket (e.g. 0-9, 10-19, 20-29, etc) who wear glasses/contact lenses for distance vision, in the output of `tabulate age_categories`. We refer to the Example 3 of [tabulate_doc](https://www.stata.com/manuals/rtabulateoneway.pdf) to craft this table.
 
 ``` stata
 . preserve
@@ -123,7 +122,6 @@ You can see our table, which demonstrates the proportion of respondents within e
 
 We fit three logistic regression models to predict whether a respondent wears glasses/contact lenses for distance vision with age (i.e. model `gw_a`) / age, race, gender (i.e., model `gw_arg`) / age, race, gender, Poverty Income Ratio (i.e., model `gw_argp`) as predictors. The summary of the estimated odds ratios for the coefficients in each model, along with the sample size for the model, the pseudo-$R^2$, and AIC values, can be found in matrix `report_matrix`. How to use logistic regression model is discussed in [logistic_regression](https://www.stata.com/features/overview/logistic-regression/).
 
-
 Before building the models, we first clean the data to remove the missing values and invalid values.
 
 ``` stata
@@ -143,7 +141,8 @@ Before building the models, we first clean the data to remove the missing values
 ```
 
 We build the model `gw_a` and store its estimatioin results into matrices.
-```stata
+
+``` stata
 
 . // Build model `gw_a`.
 . 
@@ -198,11 +197,11 @@ Note: BIC uses N = number of observations. See [R] IC note.
 
 . // Save the model.
 . estimates store gw_a
-
 ```
 
 We build the model `gw_arg` and store its estimatioin results into matrices.
-```stata
+
+``` stata
 
 . // Build model `gw_arg`
 . 
@@ -259,7 +258,8 @@ Note: BIC uses N = number of observations. See [R] IC note.
 ```
 
 We build the model `gw_argp` and store its estimatioin results into matrices.
-```stata
+
+``` stata
 . // Build model `gw_argp`
 . 
 . // Fit a logistic regression model with glass_wear as reponse,
@@ -316,7 +316,8 @@ Note: BIC uses N = number of observations. See [R] IC note.
 ```
 
 Then, we use MATA to create a matrix which summarizes the estimation results of three models.
-```stata
+
+``` stata
 . // Use MATA to build a table (i.e., a matrix) summarizing the estimation results of three models.
 . mata:
 ------------------------------------------------- mata (type end to exit) -----------------------------------------------------------------------------------------
@@ -352,7 +353,8 @@ Then, we use MATA to create a matrix which summarizes the estimation results of 
 ```
 
 We display this matrix. Please note that `0` means that the corresponding coefficient doesn't exist in a certain model.
-```stata
+
+``` stata
 . // Rename the columns and rows of the report matrix for clear display.
 . matrix colnames report_matrix = "age_year" ///
 >                                 "1b.race" "2.race" "3.race" "4.race" "5.race" ///
@@ -371,7 +373,6 @@ report_matrix[3,13]
    gw_a  1.0245185          0          0          0          0          0          0          0          0  .29265072       6247  .04733303  8119.8715
  gw_arg  1.0225868          1  1.1682149   1.894799  1.2923996  1.8828854          1  1.6520269          0  .16523167       6247  .06855546  7949.0753
 gw_argp  1.0224363          1  1.1230212  1.6512439  1.2304557  1.7035717          1  1.6757675  1.1203014   .1331659       6247  .07339952  7909.8082
-
 ```
 
 ### d
@@ -407,14 +408,13 @@ Log likelihood = -3946.9041                             Pseudo R2     = 0.0734
        _cons |   .1331659   .0116903   -22.97   0.000     .1121161    .1581678
 ------------------------------------------------------------------------------
 Note: _cons estimates baseline odds.
-
 ```
 
 As shown in the output of logistic regression model, the z-statistic of `2.gender` is 9.51 with p-value 0.000, which demonstrates that the estimated odds of `2.gender` is significantly different from 0 and, in other words, odds of men and women being wears of glasses/contact lenses for distance vision differs.
 
-
 We also test the proportion of wears of glasses/contact lenses for distance vision, with respect to male and female. The result of `tabulate` shows that there are about 37.14% men wearing glasses/contact lenses which is lower than that of women (i.e., 47.62%).
-```stata
+
+``` stata
 
 . // Show the the proportion of wearers of glasses/contact lenses for distance vision
 . // with respect to men and women
@@ -457,6 +457,7 @@ We also test the proportion of wears of glasses/contact lenses for distance visi
 ### a
 
 We first load the dataset and define the `sakila_query` function.
+
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 2-a"
@@ -487,6 +488,7 @@ sakila_query <- function(query_str) {
 ```
 
 We use SQL query to answer the question "Aside from English, what language is most common for films? Answer this with a single SQL query.".
+
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 2-a"
@@ -509,13 +511,11 @@ SELECT l.name AS language_name, COUNT(f.language_id) AS language_count
 
 ```
 
-The output demonstrates that there is no non-English film. 
+The output demonstrates that there is no non-English film.
 
 ### b
 
 We first use SQL query to answer the question "What genre of movie is the most common in the data, and how many movies are of this genre?".
-
-
 
 **SQL implementation**:
 
@@ -701,6 +701,7 @@ country_result[country_result$customer_counts == 9, ]
 ### a
 
 Load the dataset.
+
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 3-a"
@@ -796,13 +797,7 @@ The most common area code is "973" which includes 36 phones.
 
 # We use `gsub` to extract apartment numbers.
 # `gsub` will substitute the original address string with the extracted apartment number, if the regular expression matches the address.
-# In this regular expression, we use "^[0-9]+[a-zA-Z #]+" to ensure the address begins with a number plus street name.
-# (e.g., "74 W College St")
-# Then we use "[0-9]*[a-zA-Z #]+" to address the situation where the street name contains a number.
-# (e.g., "30 W 80th St #1995", the number 80 is not apartment number).
-# Finally, we use "([0-9]+).*$" to extract the apartment number, 
-# the apartment number is stored in a temporary variable and can be access through "\\1".
-apartment_numbers_str <- gsub("^[0-9]+[a-zA-Z #]+[0-9]*[a-zA-Z #]+([0-9]+).*$",
+apartment_numbers_str <- gsub(".*[ #]+([0-9]+)$",
                               "\\1",
                               us_500_records$address)
 # If the regular expression doesn't match the address, it will not change the address string to apartment number, but keep the address string unchanged.
@@ -897,7 +892,7 @@ check_benford(leading_digits)
 
 ```
 
-As the results shown, for digits 1, 2, 5, 7, 10, there is significant divergence between samples' density and Benford's density. And in the chi-squared test, p-value is very small (i.e., $3.175664e-05$), which demonstrates that we can reject the null hypothesis, and, in other words, the leading digits of apartment numbers don't follow Benford's law. Therefore, I argue that apartment numbers would not pass as real data. 
+As the results shown, except digit 4, there is significant divergence between samples' density and Benford's density. And in the chi-squared test, p-value is very small (i.e., $1.158168e-08$), which demonstrates that we can reject the null hypothesis, and, in other words, the leading digits of apartment numbers don't follow Benford's law. Therefore, I argue that apartment numbers would not pass as real data.
 
 ### f
 
@@ -934,6 +929,3 @@ check_benford(last_digits)
 ```
 
 As shown in our output, except digits 4 and 6, there is significant divergence between samples' density and Benford's density. The p-value of chi-squared test also supports this finding. The p-value $0.0$ shows that we can reject the null hypothesis and conclude that the last digits of street numbers don't follow Benford's law.
-
-
-
