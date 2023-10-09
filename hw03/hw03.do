@@ -1,18 +1,18 @@
 clear
-// Load data\VIX_D.
-import sasxport5 "L:\umich\stat506\hw03\data\VIX_D.XPT", clear
-// Save data\VIX_D as data\vid_d.
-save "L:\umich\stat506\hw03\data\vid_d.dta", replace
+// Load VIX_D.
+import sasxport5 "L:\umich\stat506\r_hw03\hw03\data\VIX_D.XPT", clear
+// Save VIX_D into a dta file `vid_d.dta`.
+save "L:\umich\stat506\r_hw03\hw03\data\vid_d.dta", replace
 
-// Load data\DEMO_D.
-import sasxport5 "L:\umich\stat506\hw03\data\DEMO_D.XPT", clear
-// Save data\DEMO_D as data\DEMO_D.
-save "L:\umich\stat506\hw03\data\demo_d.dta", replace
+// Load DEMO_D.
+import sasxport5 "L:\umich\stat506\r_hw03\hw03\data\DEMO_D.XPT", clear
+// Save DEMO_D into a dta file `demo_d.dta`.
+save "L:\umich\stat506\r_hw03\hw03\data\demo_d.dta", replace
 
-// Reopen the data\VIX_D.
-use "L:\umich\stat506\hw03\data\vid_d.dta", clear
-// Merge data.
-merge 1:1 seqn using "L:\umich\stat506\hw03\data\demo_d.dta",  keep(match)
+// Open the `vid_dta`.
+use "L:\umich\stat506\r_hw03\hw03\data\vid_d.dta", clear
+// Merge data on the key SEQN and only keep the records which matched.
+merge 1:1 seqn using "L:\umich\stat506\r_hw03\hw03\data\demo_d.dta",  keep(match)
 
 // Show the total number.
 display _N
@@ -29,7 +29,7 @@ preserve
 
 // Keep the records of respondents who wear glasses/contact lenses for distance vision.
 keep if (glass_wear == 1 & !missing(glass_wear)) /// 
-		& age_year >= 0 & !missing(age_year)
+		& (age_year >= 0 & !missing(age_year))
 // Generate a new variable to show the age categories.
 generate age_categories=recode(age_year, 9, 19, 29, 39, 49, 59, 69, 79, 89)
 label define rename_age_cat 9 "[0, 9]" 19 "[10, 19]" 29 "[20, 29]" 39 "[30, 39]" ///
@@ -42,57 +42,76 @@ tabulate age_categories
 
 restore
 
+
+// Data clean.
 // Remove the missing data and invalid data from glass_wear and age_year.
 keep if (glass_wear == 1 | glass_wear == 2) & !missing(glass_wear) ///
 		& age_year >= 0 & !missing(age_year)
+// Remove the missing data from race and gender.
+keep if !missing(race) & !missing(gender)
+// Remove the missing data from pir.
+keep if !missing(pir)
+
+// Build model `gw_a`.
+
 // Originally, 1 means the respondent wears glasses,
 // and 2 means the repondent doesn't wear glasses.
-// We replace glass_wear == 2 to 1.
+// We replace glass_wear == 2 with 1.
 replace glass_wear = 0 if glass_wear == 2
 // Fit logistic regression model with glass_wear as response and age as predictor.
 logistic glass_wear c.age_year
 // Estimate AIC.
 estat ic
-// Store the related information
+// Store the estimation results. 
+// `e(b)` is coefficients.
+// `e(N)` is sample size.
+// `r2_p` is the pseudo R^2.
+// `r(S)[1, 5]` is the AIC value.
 matrix gw_a_coef = e(b)
 local gw_a_N e(N)
 local gw_a_r2_p e(r2_p)
 local gw_a_aic r(S)[1, 5]
 matrix gw_a_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
+// Save the model.
 estimates store gw_a
 
-// Remove the missing data from race and gender.
-keep if !missing(race) & !missing(gender)
+
+// Build model `gw_arg`
+
 // Fit logistic regression model with glass_wear as response, 
 // age, race, gender as predictors.
 logistic glass_wear c.age i.race i.gender
 // Estimate AIC.
 estat ic
-// Store the related information.
+// Store the estimation results.
 matrix gw_arg_coef = e(b)
 local gw_arg_N e(N)
 local gw_arg_r2_p e(r2_p)
 local gw_arg_aic r(S)[1, 5]
 matrix gw_arg_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
+// Save the model.
 estimates store gw_arg
 
-// Remove the missing data from pir.
-keep if !missing(pir)
+
+// Build model `gw_argp`
+
 // Fit a logistic regression model with glass_wear as reponse,
 // age, race, gender and pir as predictors.
 logistic glass_wear c.age i.race i.gender c.pir
 // Estimate AIC.
 estat ic
-// Store related information.
+// Store the estimation results.
 matrix gw_argp_coef = e(b)
 local gw_argp_N e(N)
 local gw_argp_r2_p e(r2_p)
 local gw_argp_aic r(S)[1, 5]
 matrix gw_argp_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
+// Save the model.
 estimates store gw_argp
 
-// Use MATA to process the regression information.
+// Use MATA to build a table (i.e., a matrix) summarizing the estimation results of three models.
 mata:
+// Load matrix from STATA.
 gw_a_coef = st_matrix("gw_a_coef")
 gw_a_nra_matrix = st_matrix("gw_a_nra_matrix")
 gw_arg_coef = st_matrix("gw_arg_coef")
@@ -100,17 +119,17 @@ gw_arg_nra_matrix = st_matrix("gw_arg_nra_matrix")
 gw_argp_coef = st_matrix("gw_argp_coef")
 gw_argp_nra_matrix = st_matrix("gw_argp_nra_matrix")
 
-// Arrange the information.
+// Combine the matrices to formulate a succinct matrix.
 gw_a = (exp(gw_a_coef[1, 1]), J(1, 8, 0), exp(gw_a_coef[1, 2]), gw_a_nra_matrix)
 gw_arg = (exp(gw_arg_coef[1, 1..8]), 0, exp(gw_arg_coef[1, 9]), gw_arg_nra_matrix)
 gw_argp = (exp(gw_argp_coef), gw_argp_nra_matrix)
-
 report_matrix = (gw_a \ gw_arg \ gw_argp)
 
+// Put the matrix back to STATA.
 st_matrix("report_matrix", report_matrix)
 end
 
-// Rename the columns and rows of the matrix for clear display.
+// Rename the columns and rows of the report matrix for clear display.
 matrix colnames report_matrix = "age_year" ///
 								"1b.race" "2.race" "3.race" "4.race" "5.race" ///
 								"1b.gender" "2.gender" ///
@@ -120,6 +139,10 @@ matrix rownames report_matrix = "gw_a" "gw_arg" "gw_argp"
 
 matrix list report_matrix
 
+
+
+// Reload the third model.
+estimates restore gw_argp
 // Replay the regression.
 logistic
 

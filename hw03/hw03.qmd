@@ -1,4 +1,3 @@
-
 ---
 title: "Problem Set 3"
 format: 
@@ -12,39 +11,40 @@ editor: visual
 
 ## About this file
 
-This is the Yicun Duan's (umich id: 62178151) report of STAT 506's Problem Set 3. Here is the link to my [GitHub repository]().
+This is the Yicun Duan's (umich id: 62178151) report of STAT 506's Problem Set 3. Here is the link to my [GitHub repository](https://github.com/YicunDuanUMich/r_hw03).
 
 ## Problem 1
 
-
 ### a
 
-We merge VIX_D and DEMO_D on variable `SEQN` to create a single dataset. We use command `display _N` to show the total sample size.
+We merge VIX_D and DEMO_D on variable `SEQN` to create a single dataset. We use command `display _N` to show that the total sample size is 6980. The instructions of command `import sasxport 5` and `merge` can be found in [import_doc](https://www.stata.com/manuals13/dimportsasxport.pdf) and [merge_doc](https://www.stata.com/manuals/dmerge.pdf), respectively.
 
-```stata
+``` stata
 . clear
 
-. // Load data\VIX_D.
-. import sasxport5 "L:\umich\stat506\hw03\data\VIX_D.XPT", clear
+. // Load VIX_D.
+. import sasxport5 "L:\umich\stat506\r_hw03\hw03\data\VIX_D.XPT", clear
 
-. // Save data\VIX_D as data\vid_d.
-. save "L:\umich\stat506\hw03\data\vid_d.dta", replace
-file L:\umich\stat506\hw03\data\vid_d.dta saved
-
-. 
-. // Load data\DEMO_D.
-. import sasxport5 "L:\umich\stat506\hw03\data\DEMO_D.XPT", clear
-
-. // Save data\DEMO_D as data\DEMO_D.
-. save "L:\umich\stat506\hw03\data\demo_d.dta", replace
-file L:\umich\stat506\hw03\data\demo_d.dta saved
+. // Save VIX_D into a dta file `vid_d.dta`.
+. save "L:\umich\stat506\r_hw03\hw03\data\vid_d.dta", replace
+(file L:\umich\stat506\r_hw03\hw03\data\vid_d.dta not found)
+file L:\umich\stat506\r_hw03\hw03\data\vid_d.dta saved
 
 . 
-. // Reopen the data\VIX_D.
-. use "L:\umich\stat506\hw03\data\vid_d.dta", clear
+. // Load DEMO_D.
+. import sasxport5 "L:\umich\stat506\r_hw03\hw03\data\DEMO_D.XPT", clear
 
-. // Merge data.
-. merge 1:1 seqn using "L:\umich\stat506\hw03\data\demo_d.dta",  keep(match)
+. // Save DEMO_D into a dta file `demo_d.dta`.
+. save "L:\umich\stat506\r_hw03\hw03\data\demo_d.dta", replace
+(file L:\umich\stat506\r_hw03\hw03\data\demo_d.dta not found)
+file L:\umich\stat506\r_hw03\hw03\data\demo_d.dta saved
+
+. 
+. // Open the `vid_dta`.
+. use "L:\umich\stat506\r_hw03\hw03\data\vid_d.dta", clear
+
+. // Merge data on the key SEQN and only keep the records which matched.
+. merge 1:1 seqn using "L:\umich\stat506\r_hw03\hw03\data\demo_d.dta",  keep(match)
 
     Result                      Number of obs
     -----------------------------------------
@@ -57,7 +57,11 @@ file L:\umich\stat506\hw03\data\demo_d.dta saved
 . display _N
 6980
 
-. 
+```
+
+We rename the columns according to the instruction of [VIX_D](https://wwwn.cdc.gov/Nchs/Nhanes/2005-2006/VIX_D.htm) and [DEMO_D](https://wwwn.cdc.gov/Nchs/Nhanes/2005-2006/DEMO_D.htm). `viq220` shows whether the respondents wear glasses/contact lenses for distance, where `1` refers to Yes, `2` refers to No and `9` refers to "Don't know". The `ridageyr` is the age at screening adjudicated, ranging from 0 to 85. `riagendr` is the gender of the sample person, where `1` represents Male and `2` represents Female. `ridreth1` records the race information, with `1, 2, 3, 4, 5` as the signs of five different races. `indfmpir` indicates the continuous variable Poverty Income Ratio (PIR) with minimum 0.0 and maximum 5.0.
+
+```stata
 . // Rename the columns for easy understanding.
 . rename viq220 glass_wear
 
@@ -68,22 +72,19 @@ file L:\umich\stat506\hw03\data\demo_d.dta saved
 . rename ridreth1 race
 
 . rename indfmpir pir
-
-. 
-
 ```
 
 ### b
 
-You can see our table in the output of command `tabulate age_categories`.
+You can see our table, which demonstrates the proportion of respondents within each 10-year age bracket (e.g. 0-9, 10-19, 20-29, etc) who wear glasses/contact lenses for distance vision, in the output of `tabulate age_categories`. We refer to the Example 3 of [tabulate_doc](https://www.stata.com/manuals/rtabulateoneway.pdf) to craft this table. 
 
-```stata
+``` stata
 . preserve
 
 . 
 . // Keep the records of respondents who wear glasses/contact lenses for distance vision.
 . keep if (glass_wear == 1 & !missing(glass_wear)) /// 
->         & age_year >= 0 & !missing(age_year)
+>                 & (age_year >= 0 & !missing(age_year))
 (4,215 observations deleted)
 
 . // Generate a new variable to show the age categories.
@@ -116,38 +117,55 @@ You can see our table in the output of command `tabulate age_categories`.
 
 . 
 . restore
-
 ```
 
 ### c
 
-We fit three logistic regression models to predict whether a respondent wears glasses/contact lenses for distance vision with age (i.e. model `gw_a`) / age, race, gender (i.e., model `gw_arg`) / age, race, gender, Poverty Income Ratio (i.e., model `gw_argp`) as predictors. The summary of the estimated odds ratios for the coefficients in each model, along with the sample size for the model, the pseudo-$R^2$, and AIC values, can be found in matrix `report_matrix`. 
+We fit three logistic regression models to predict whether a respondent wears glasses/contact lenses for distance vision with age (i.e. model `gw_a`) / age, race, gender (i.e., model `gw_arg`) / age, race, gender, Poverty Income Ratio (i.e., model `gw_argp`) as predictors. The summary of the estimated odds ratios for the coefficients in each model, along with the sample size for the model, the pseudo-$R^2$, and AIC values, can be found in matrix `report_matrix`. How to use logistic regression model is discussed in [logistic_regression](https://www.stata.com/features/overview/logistic-regression/).
 
-```stata
+
+Before building the models, we first clean the data to remove the missing values and invalid values.
+
+``` stata
+. // Data clean.
 . // Remove the missing data and invalid data from glass_wear and age_year.
 . keep if (glass_wear == 1 | glass_wear == 2) & !missing(glass_wear) ///
->         & age_year >= 0 & !missing(age_year)
+>                 & age_year >= 0 & !missing(age_year)
 (435 observations deleted)
 
+. // Remove the missing data from race and gender.
+. keep if !missing(race) & !missing(gender)
+(0 observations deleted)
+
+. // Remove the missing data from pir.
+. keep if !missing(pir)
+(298 observations deleted)
+```
+
+We build the model `gw_a` and store its estimatioin results into matrices.
+```stata
+
+. // Build model `gw_a`.
+. 
 . // Originally, 1 means the respondent wears glasses,
 . // and 2 means the repondent doesn't wear glasses.
-. // We replace glass_wear == 2 to 1.
+. // We replace glass_wear == 2 with 1.
 . replace glass_wear = 0 if glass_wear == 2
-(3,780 real changes made)
+(3,592 real changes made)
 
 . // Fit logistic regression model with glass_wear as response and age as predictor.
 . logistic glass_wear c.age_year
 
-Logistic regression                                     Number of obs =  6,545
-                                                        LR chi2(1)    = 443.37
+Logistic regression                                     Number of obs =  6,247
+                                                        LR chi2(1)    = 403.24
                                                         Prob > chi2   = 0.0000
-Log likelihood = -4235.9433                             Pseudo R2     = 0.0497
+Log likelihood = -4057.9357                             Pseudo R2     = 0.0473
 
 ------------------------------------------------------------------------------
   glass_wear | Odds ratio   Std. err.      z    P>|z|     [95% conf. interval]
 -------------+----------------------------------------------------------------
-    age_year |    1.02498   .0012356    20.47   0.000     1.022561    1.027405
-       _cons |    .283379   .0151461   -23.59   0.000     .2551952    .3146755
+    age_year |   1.024519   .0012701    19.54   0.000     1.022032    1.027011
+       _cons |   .2926507   .0159899   -22.49   0.000     .2629309    .3257299
 ------------------------------------------------------------------------------
 Note: _cons estimates baseline odds.
 
@@ -159,11 +177,15 @@ Akaike's information criterion and Bayesian information criterion
 -----------------------------------------------------------------------------
        Model |          N   ll(null)  ll(model)      df        AIC        BIC
 -------------+---------------------------------------------------------------
-           . |      6,545  -4457.627  -4235.943       2   8475.887    8489.46
+           . |      6,247  -4259.553  -4057.936       2   8119.871   8133.351
 -----------------------------------------------------------------------------
 Note: BIC uses N = number of observations. See [R] IC note.
 
-. // Store the related information
+. // Store the estimation results. 
+. // `e(b)` is coefficients.
+. // `e(N)` is sample size.
+. // `r2_p` is the pseudo R^2.
+. // `r(S)[1, 5]` is the AIC value.
 . matrix gw_a_coef = e(b)
 
 . local gw_a_N e(N)
@@ -174,35 +196,38 @@ Note: BIC uses N = number of observations. See [R] IC note.
 
 . matrix gw_a_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
 
+. // Save the model.
 . estimates store gw_a
 
-. 
-. // Remove the missing data from race and gender.
-. keep if !missing(race) & !missing(gender)
-(0 observations deleted)
+```
 
+We build the model `gw_arg` and store its estimatioin results into matrices.
+```stata
+
+. // Build model `gw_arg`
+. 
 . // Fit logistic regression model with glass_wear as response, 
 . // age, race, gender as predictors.
 . logistic glass_wear c.age i.race i.gender
 
-Logistic regression                                     Number of obs =  6,545
-                                                        LR chi2(6)    = 641.49
+Logistic regression                                     Number of obs =  6,247
+                                                        LR chi2(6)    = 584.03
                                                         Prob > chi2   = 0.0000
-Log likelihood = -4136.8805                             Pseudo R2     = 0.0720
+Log likelihood = -3967.5377                             Pseudo R2     = 0.0686
 
 ------------------------------------------------------------------------------
   glass_wear | Odds ratio   Std. err.      z    P>|z|     [95% conf. interval]
 -------------+----------------------------------------------------------------
-    age_year |   1.022831   .0012912    17.88   0.000     1.020303    1.025365
+    age_year |   1.022587   .0013241    17.25   0.000     1.019995    1.025185
              |
         race |
-          2  |   1.169203    .192081     0.95   0.341     .8473273    1.613349
-          3  |   1.952149   .1366952     9.55   0.000     1.701803    2.239322
-          4  |    1.29936   .0995052     3.42   0.001     1.118264    1.509783
-          5  |   1.917442   .2596352     4.81   0.000     1.470495    2.500236
+          2  |   1.168215   .1956975     0.93   0.353     .8412612    1.622238
+          3  |   1.894799   .1363362     8.88   0.000     1.645571    2.181773
+          4  |     1.2924   .1014773     3.27   0.001     1.108056    1.507412
+          5  |   1.882885   .2609691     4.57   0.000     1.434983    2.470592
              |
-    2.gender |    1.65217   .0875831     9.47   0.000     1.489127    1.833064
-       _cons |   .1593479   .0124169   -23.57   0.000     .1367784    .1856414
+    2.gender |   1.652027   .0892984     9.29   0.000     1.485958    1.836656
+       _cons |   .1652317   .0132454   -22.46   0.000     .1412078    .1933428
 ------------------------------------------------------------------------------
 Note: _cons estimates baseline odds.
 
@@ -214,11 +239,11 @@ Akaike's information criterion and Bayesian information criterion
 -----------------------------------------------------------------------------
        Model |          N   ll(null)  ll(model)      df        AIC        BIC
 -------------+---------------------------------------------------------------
-           . |      6,545  -4457.627   -4136.88       7   8287.761   8335.266
+           . |      6,247  -4259.553  -3967.538       7   7949.075   7996.254
 -----------------------------------------------------------------------------
 Note: BIC uses N = number of observations. See [R] IC note.
 
-. // Store the related information.
+. // Store the estimation results.
 . matrix gw_arg_coef = e(b)
 
 . local gw_arg_N e(N)
@@ -229,13 +254,14 @@ Note: BIC uses N = number of observations. See [R] IC note.
 
 . matrix gw_arg_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
 
+. // Save the model.
 . estimates store gw_arg
+```
 
+We build the model `gw_argp` and store its estimatioin results into matrices.
+```stata
+. // Build model `gw_argp`
 . 
-. // Remove the missing data from pir.
-. keep if !missing(pir)
-(298 observations deleted)
-
 . // Fit a logistic regression model with glass_wear as reponse,
 . // age, race, gender and pir as predictors.
 . logistic glass_wear c.age i.race i.gender c.pir
@@ -274,7 +300,7 @@ Akaike's information criterion and Bayesian information criterion
 -----------------------------------------------------------------------------
 Note: BIC uses N = number of observations. See [R] IC note.
 
-. // Store related information.
+. // Store the estimation results.
 . matrix gw_argp_coef = e(b)
 
 . local gw_argp_N e(N)
@@ -285,12 +311,16 @@ Note: BIC uses N = number of observations. See [R] IC note.
 
 . matrix gw_argp_nra_matrix = (`gw_a_N', `gw_a_r2_p', `gw_a_aic')
 
+. // Save the model.
 . estimates store gw_argp
+```
 
-. 
-. // Use MATA to process the regression information.
+Then, we use MATA to create a matrix which summarizes the estimation results of three models.
+```stata
+. // Use MATA to build a table (i.e., a matrix) summarizing the estimation results of three models.
 . mata:
-------------------------------------------------- mata (type end to exit) ----------------------------------------------------------------------------------------------------
+------------------------------------------------- mata (type end to exit) -----------------------------------------------------------------------------------------
+: // Load matrix from STATA.
 : gw_a_coef = st_matrix("gw_a_coef")
 
 : gw_a_nra_matrix = st_matrix("gw_a_nra_matrix")
@@ -304,24 +334,26 @@ Note: BIC uses N = number of observations. See [R] IC note.
 : gw_argp_nra_matrix = st_matrix("gw_argp_nra_matrix")
 
 : 
-: // Arrange the information.
+: // Combine the matrices to formulate a succinct matrix.
 : gw_a = (exp(gw_a_coef[1, 1]), J(1, 8, 0), exp(gw_a_coef[1, 2]), gw_a_nra_matrix)
 
 : gw_arg = (exp(gw_arg_coef[1, 1..8]), 0, exp(gw_arg_coef[1, 9]), gw_arg_nra_matrix)
 
 : gw_argp = (exp(gw_argp_coef), gw_argp_nra_matrix)
 
-: 
 : report_matrix = (gw_a \ gw_arg \ gw_argp)
 
 : 
+: // Put the matrix back to STATA.
 : st_matrix("report_matrix", report_matrix)
 
 : end
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+```
 
-. 
-. // Rename the columns and rows of the matrix for clear display.
+We display this matrix. Please note that `0` means that the corresponding coefficient doesn't exist in a certain model.
+```stata
+. // Rename the columns and rows of the report matrix for clear display.
 . matrix colnames report_matrix = "age_year" ///
 >                                 "1b.race" "2.race" "3.race" "4.race" "5.race" ///
 >                                 "1b.gender" "2.gender" ///
@@ -336,17 +368,21 @@ Note: BIC uses N = number of observations. See [R] IC note.
 report_matrix[3,13]
                            1b.         2.         3.         4.         5.        1b.         2.                                                       
           age_year       race       race       race       race       race     gender     gender        pir      _cons          N         R2        AIC
-   gw_a  1.0249798          0          0          0          0          0          0          0          0  .28337901       6545  .04973123  8475.8866
- gw_arg  1.0228309          1  1.1692027  1.9521488  1.2993601  1.9174418          1  1.6521699          0  .15934788       6545  .07195445  8287.7609
+   gw_a  1.0245185          0          0          0          0          0          0          0          0  .29265072       6247  .04733303  8119.8715
+ gw_arg  1.0225868          1  1.1682149   1.894799  1.2923996  1.8828854          1  1.6520269          0  .16523167       6247  .06855546  7949.0753
 gw_argp  1.0224363          1  1.1230212  1.6512439  1.2304557  1.7035717          1  1.6757675  1.1203014   .1331659       6247  .07339952  7909.8082
 
 ```
 
 ### d
 
-As shown in the output of logistic regression model, the z-statistic of `2.gender` is 9.51 and the p-value is 0.000, which demonstrates that the estimated odds of `2.gender` is significantly different from 0 and, in other words, odds of men and women being wears of glasess/contact lenses for distance vision differs. We also test the proportion of wears of glasses/contact lenses for distance vision with respect to male and female. The result of `tabulate` command shows that there is about 37.14% men wearing glasses/contact lenses which is lower than that of women (i.e., 47.62%). 
+We first reload the third model `gw_argp` and replay the regression.
 
-```stata
+``` stata
+. // Reload the third model.
+. estimates restore gw_argp
+(results gw_argp are active now)
+
 . // Replay the regression.
 . logistic
 
@@ -372,7 +408,14 @@ Log likelihood = -3946.9041                             Pseudo R2     = 0.0734
 ------------------------------------------------------------------------------
 Note: _cons estimates baseline odds.
 
-. 
+```
+
+As shown in the output of logistic regression model, the z-statistic of `2.gender` is 9.51 with p-value 0.000, which demonstrates that the estimated odds of `2.gender` is significantly different from 0 and, in other words, odds of men and women being wears of glasses/contact lenses for distance vision differs.
+
+
+We also test the proportion of wears of glasses/contact lenses for distance vision, with respect to male and female. The result of `tabulate` shows that there are about 37.14% men wearing glasses/contact lenses which is lower than that of women (i.e., 47.62%).
+```stata
+
 . // Show the the proportion of wearers of glasses/contact lenses for distance vision
 . // with respect to men and women
 . label define rename_gender 1 "Male" 2 "Female", replace
@@ -407,13 +450,13 @@ Note: _cons estimates baseline odds.
            |     57.50      42.50 |    100.00 
 
 . 
-
 ```
 
 ## Problem 2
 
 ### a
 
+We first load the dataset and define the `sakila_query` function.
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 2-a"
@@ -421,35 +464,71 @@ Note: _cons estimates baseline odds.
 #| error: true
 
 rm(list = ls())
-setwd("O:\\dyc\\OneDrive - Umich\\umich\\stat506\\hw03")
+# Reset working directory.
+setwd("O:\\dyc\\OneDrive - Umich\\umich\\stat506\\r_hw03\\hw03")
 
+# Load dataset
 library(DBI)
-
 sakila <- dbConnect(RSQLite::SQLite(), "./data/sakila-sqlite3-main/sakila_master.db")
 
+
+#' Conduct SQL query on dataset sakila.
+#'
+#' @param query_str a SQL query string.
+#'
+#' @return the SQL query result.
+#' @export
+#'
+#' @examples
 sakila_query <- function(query_str) {
-  dbGetQuery(sakila, query_str)
+  return(dbGetQuery(sakila, query_str))
 }
 
+```
+
+We use SQL query to answer the question "Aside from English, what language is most common for films? Answer this with a single SQL query.".
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 2-a"
+#| warning: true
+#| error: true
+
+# Table `film` left joins table `language` on key `language_id`.
+# Then, we count the number of films according to their `language_id`.
+# Finally, we rearrange the results in descending order.
 sakila_query("
-SELECT DISTINCT(language_id)
-  FROM film
+SELECT l.name AS language_name, COUNT(f.language_id) AS language_count
+  FROM film AS f
+       LEFT JOIN language AS l 
+              ON f.language_id = l.language_id
+ WHERE f.language_id != 1
+ GROUP BY f.language_id
+ ORDER BY -language_count
+ LIMIT 5
              ")
 
 ```
 
+The output demonstrates that there is no non-English film. 
 
 ### b
 
-As shown in the SQL and R outputs, the Sports is the most common genre of movies and there are 74 Sports movies in the dataset.
+We first use SQL query to answer the question "What genre of movie is the most common in the data, and how many movies are of this genre?".
+
+
 
 **SQL implementation**:
+
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 2-b"
 #| warning: true
 #| error: true
 
+# Table `film` left joins `film_category` on key `film_id`.
+# The merged table then left joins `category` on key `category_id`.
+# We count the number of films according to their `category_id`.
+# We rearrange the results in descending order.
 sakila_query("
 SELECT c.name, COUNT(ffc.category_id) AS genre_count 
   FROM (SELECT f.film_id, fc.category_id
@@ -464,27 +543,32 @@ SELECT c.name, COUNT(ffc.category_id) AS genre_count
 
 ```
 
+As shown in the outputs, the Sports is the most common genre of movies and there are 74 Sports movies.
+
+We also use R to answer this question and get the same results.
+
 **R implementation**:
+
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 2-b"
 #| warning: true
 #| error: true
 
+# Extract tables from the dataset.
 film_table <- sakila_query("
 SELECT *
   FROM film
                            ")
-
 film_category_table <- sakila_query("
 SELECT *
   FROM film_category
                                     ")
-
 category_table <- sakila_query("
 SELECT *
   FROM category
                                ")
+
 # `film_table` left joins `film_category_table` on the key `film_id`, 
 # and then we select `film_id` and `category_id` from the merged table.
 ffc_table <- merge(x = film_table, y = film_category_table,
@@ -497,7 +581,7 @@ ffcc_table <- merge(x = ffc_table, y = category_table,
                     by.x = "category_id", by.y = "category_id",
                     all.x = TRUE)[, c("name", "category_id")]
 
-# Count.
+# Count the number of films according to their `category_id`.
 genre_names <- vector("character", length = length(unique(ffcc_table$name)))
 genre_counts <- vector("double", length = length(unique(ffcc_table$category_id)))
 i <- 1
@@ -506,26 +590,30 @@ for (id in unique(ffcc_table$category_id)) {
   genre_counts[i] <- sum(ffcc_table$category_id == id)
   i <- i + 1
 }
-
 genre_result <- data.frame(name = genre_names, genre_counts = genre_counts)
 
-# Order by `genre_counts`.
+# Order by `genre_counts` in a descending manner.
 head(genre_result[order(genre_result$genre_counts, decreasing = TRUE), ])
 
 ```
 
-
 ### c
 
-The United Kingdom has exactly 9 customers.
+We first use SQL to answer the question "Identify which country or countries have exactly 9 customers.".
 
 **SQL implementation**:
+
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 2-c"
 #| warning: true
 #| error: true
 
+# We use "left join" to merge the tables `customer`, `address`, `city` and `country` iteratively.
+# During this process, we use the keys `address_id`, `city_id` and `country_id`.
+# We then count the number of customers according to their countries.
+# We only choose the country which has exactly 9 customers, using `HAVING` command.
+# We rearrange the results in descending order.
 sakila_query("
 SELECT co.country, COUNT(cca.country_id) AS customer_count
   FROM (SELECT ca.customer_id, ci.country_id 
@@ -537,41 +625,43 @@ SELECT co.country, COUNT(cca.country_id) AS customer_count
                        ON ca.city_id = ci.city_id) AS cca
        LEFT JOIN country AS co
               ON cca.country_id = co.country_id
- WHERE cca.country_id IS NOT NULL AND co.country IS NOT NULL
  GROUP BY cca.country_id
  HAVING customer_count == 9
              ")
 
 ```
 
+The results show that the United Kingdom has exactly 9 customers.
+
+The R implementation also gives the same results.
+
 **R implementation**:
+
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 2-c"
 #| warning: true
 #| error: true
 
+# Extract tables from dataset.
 customer_table <- sakila_query("
 SELECT * 
   FROM customer
                                ")
-
 address_table <- sakila_query("
 SELECT *
   FROM address
                               ")
-
 city_table <- sakila_query("
 SELECT *
   FROM city
                               ")
-
 country_table <- sakila_query("
 SELECT *
   FROM country
                               ")
 
-# `customer_table`left joins `address_table` on the key `address_id`,
+# `customer_table` left joins `address_table` on the key `address_id`,
 # and then we select `customer_id` `city_id` from the merged table.
 ca_table <- merge(x = customer_table, y = address_table,
                   by.x = "address_id", by.y = "address_id",
@@ -589,7 +679,7 @@ ccca_table <- merge(x = cca_table, y = country_table,
                     by.x = "country_id", by.y = "country_id",
                     all.x = TRUE)[, c("customer_id", "country_id", "country")]
 
-# Count.
+# Count the number of customers in a certain country.
 country_names <- vector("character", length = length(unique(ccca_table$country)))
 customer_counts <- vector("double", length = length(unique(ccca_table$country_id)))
 i <- 1
@@ -598,10 +688,9 @@ for (id in unique(ccca_table$country_id)) {
   customer_counts[i] <- sum(ccca_table$country_id == id)
   i <- i + 1
 }
-
 country_result <- data.frame(country = country_names, customer_counts = customer_counts)
 
-# Where `customer_counts` == 9.
+# We show the country which has exactly 9 customers.
 country_result[country_result$customer_counts == 9, ]
 
 
@@ -611,8 +700,7 @@ country_result[country_result$customer_counts == 9, ]
 
 ### a
 
-There are 12 email addresses with TLD ".net".
-
+Load the dataset.
 ```{r}
 #| code-fold: show
 #| code-summary: "The code for Problem 3-a"
@@ -620,12 +708,33 @@ There are 12 email addresses with TLD ".net".
 #| error: true
 
 rm(list = ls())
-
-us_500_records <- read.table("./data/us-500/us-500.csv", sep = ",", header = TRUE)
-
-us_500_records$email[grepl(".net$", us_500_records$email)]
+us_500_records <- read.table(
+  "./data/us-500/us-500.csv",
+  sep = ",",
+  header = TRUE)
 
 ```
+
+Then, we find the email addresses hosted at domain with TLD ".net" using regular expression.
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 3-a"
+#| warning: true
+#| error: true
+
+email_num <- length(us_500_records$email)
+
+length(
+  us_500_records$email[
+    grepl("\\.net$", us_500_records$email)
+    ]
+  ) / 
+  email_num
+
+```
+
+The result shows that there are 14% email addresses with with TLD ".net".
 
 ### b
 
@@ -635,14 +744,18 @@ us_500_records$email[grepl(".net$", us_500_records$email)]
 #| warning: true
 #| error: true
 
-us_500_records$email[grepl("[^a-zA-Z0-9@\\.]+", us_500_records$email)]
+length(
+  us_500_records$email[
+    grepl("[^a-zA-Z0-9@\\.]+", us_500_records$email)
+    ]
+  ) /
+  email_num
 
 ```
 
+There are about 24.8% email addresses having at least one non-alphanumeric character.
 
 ### c
-
-The most common area code is "973".
 
 ```{r}
 #| code-fold: show
@@ -651,9 +764,10 @@ The most common area code is "973".
 #| error: true
 
 all_phones <- c(us_500_records$phone1, us_500_records$phone2)
+# Extract the area codes using `substr`.
 area_code_all_phones <- sapply(all_phones, substr, start = 1, stop = 3, USE.NAMES = FALSE)
 
-# Count.
+# Count the number of phones according to their area codes.
 area_codes <- vector("character", length = length(unique(area_code_all_phones)))
 area_code_counts <- vector("double", length = length(unique(area_code_all_phones)))
 i <- 1
@@ -662,13 +776,15 @@ for (area_code in unique(area_code_all_phones)) {
   area_code_counts[i] <- sum(area_code_all_phones == area_code)
   i <- i + 1
 }
-
 area_code_count_result <- data.frame(area_codes = area_codes, area_code_counts = area_code_counts)
 
-# Order by `area_code_counts`.
-head(area_code_count_result[order(area_code_count_result$area_code_counts, decreasing = TRUE),])
+# Order by `area_code_counts` in a descending manner.
+head(area_code_count_result[
+  order(area_code_count_result$area_code_counts, decreasing = TRUE), ])
 
 ```
+
+The most common area code is "973" which includes 36 phones.
 
 ### d
 
@@ -678,14 +794,30 @@ head(area_code_count_result[order(area_code_count_result$area_code_counts, decre
 #| warning: true
 #| error: true
 
-apartment_numbers_str <- gsub("^[0-9]+[a-zA-Z \\#]+[0-9]*[a-zA-Z \\#]+([0-9]+).*$", "\\1", us_500_records$address)
+# We use `gsub` to extract apartment numbers.
+# `gsub` will substitute the original address string with the extracted apartment number, if the regular expression matches the address.
+# In this regular expression, we use "^[0-9]+[a-zA-Z #]+" to ensure the address begins with a number plus street name.
+# (e.g., "74 W College St")
+# Then we use "[0-9]*[a-zA-Z #]+" to address the situation where the street name contains a number.
+# (e.g., "30 W 80th St #1995", the number 80 is not apartment number).
+# Finally, we use "([0-9]+).*$" to extract the apartment number, 
+# the apartment number is stored in a temporary variable and can be access through "\\1".
+apartment_numbers_str <- gsub("^[0-9]+[a-zA-Z #]+[0-9]*[a-zA-Z #]+([0-9]+).*$",
+                              "\\1",
+                              us_500_records$address)
+# If the regular expression doesn't match the address, it will not change the address string to apartment number, but keep the address string unchanged.
+# So, we only keep the strings which only contain number.
 apartment_numbers_str <- apartment_numbers_str[grepl("^[0-9]+$", apartment_numbers_str)]
+# Transfer the string to number.
 apartment_numbers <- as.numeric(apartment_numbers_str)
 
+# Draw the log histogram.
 hist(log(apartment_numbers))
 ```
 
 ### e
+
+We first write a function `check_benford` to test whether the input digits follow Benford's law. This function will compare the density of input digits with the standard density of Benford distribution, through a density plot. It also formally tests the goodness of fit through chi-squared test.
 
 ```{r}
 #| code-fold: show
@@ -693,22 +825,38 @@ hist(log(apartment_numbers))
 #| warning: true
 #| error: true
 
-leading_digits <- as.numeric(sapply(apartment_numbers_str, substr, start = 1, stop = 1))
-
+#' Test whether the input digits follow Benford's law.
+#' 
+#' This function will compare the density of input digits with
+#' the standard density of Benford distribution, through a density plot. 
+#' It also formally tests the goodness of fit through chi-squared test.
+#'
+#' @param input_digits a vector including all sample digits.
+#'
+#' @return a density plot, the chi-square statistic and its p-value
 check_benford <- function(input_digits) {
+  
+  #' Get the standard probability of a certain digit,
+  #' assuming it follows Benford's law.
+  #'
+  #' @param d a digit
+  #'
+  #' @return the Benford probability of the digit `d`.
   benford_dist <- function(d) {
     return(log(1 + 1 / d, base = 10))
   }
   
+  # Count how many times a certain digit appears.
   input_digits_count <- vector("double", length = 9)
   input_digits_density <- vector("double", length = 9)
   n <- length(input_digits)
-  
   for (i in 1:9) {
     input_digits_count[i] <- sum(input_digits == i)
     input_digits_density[i] <- input_digits_count[i] / n
   }
   
+  # Draw the density plot to conduct a comparison 
+  # between the density of input digits and standard Benford density.
   density_for_plot <- matrix(c(input_digits_density, sapply(1:9, benford_dist)), ncol=2)
   matplot(1:9, density_for_plot, 
           type = c("b"), pch=1, col = 3:4,
@@ -716,21 +864,44 @@ check_benford <- function(input_digits) {
           xlim = c(0, 10))
   legend("topright", legend = c("Input", "Benford"), col=3:4, pch=1)
   
-  benford_chi_statistic <- 0
+  # Conduct chi-square test
+  # chi-square = \sum_{i = 1}^{k} f_i^2 / (n p_i) - n
+  benford_chi_square_statistic <- 0
   for (i in 1:9) {
-    benford_chi_statistic <- benford_chi_statistic + input_digits_count[i]^2 / (n * benford_dist(i))
+    benford_chi_square_statistic <- benford_chi_square_statistic + input_digits_count[i]^2 / (n * benford_dist(i))
   }
+  benford_chi_square_statistic <- benford_chi_square_statistic - n
   
-  benford_chi_statistic <- benford_chi_statistic - n
-  benford_p_value <- 1 - pchisq(benford_chi_statistic, df = 9 - 1)
-  cat("chi-statistic:", benford_chi_statistic, ", p-value:", benford_p_value)
+  # chi-square ~ chisq(df = 9 - 1)
+  benford_p_value <- 1 - pchisq(benford_chi_square_statistic, df = 9 - 1)
+  cat("Goodness of fit test:\nchi-square-statistic:", benford_chi_square_statistic, ", p-value:", benford_p_value)
 }
+```
 
+We extract the leading digits of apartment using `substr`, and then pass the leading digits to `check_benford`.
+
+```{r}
+#| code-fold: show
+#| code-summary: "The code for Problem 3-e"
+#| warning: true
+#| error: true
+
+# We extract the leading digits of apartment numbers.
+leading_digits <- as.numeric(
+  sapply(
+    apartment_numbers_str, substr, start = 1, stop = 1)
+  )
+
+# Do the Benford test.
 check_benford(leading_digits)
 
 ```
 
+As the results shown, for digits 1, 2, 5, 7, 10, there is significant divergence between samples' density and Benford's density. And in the chi-squared test, p-value is very small (i.e., $3.175664e-05$), which demonstrates that we can reject the null hypothesis, and, in other words, the leading digits of apartment numbers don't follow Benford's law. Therefore, I argue that apartment numbers would not pass as real data. 
+
 ### f
+
+Similar to the previous section, we test the last digit of the street number.
 
 ```{r}
 #| code-fold: show
@@ -738,15 +909,31 @@ check_benford(leading_digits)
 #| warning: true
 #| error: true
 
-street_numbers_str <- gsub("^([0-9])+.*$", "\\1", us_500_records$address)
+# We use `gsub` to extract the street numbers.
+street_numbers_str <- gsub("^([0-9]+).*$", "\\1", us_500_records$address)
+# We only keep the strings which only contain number.
 street_numbers_str <- street_numbers_str[grepl("^[0-9]+$", street_numbers_str)]
-street_numbers <- as.numeric(street_numbers_str)
 
+#' Get the last character of a string.
+#'
+#' @param x the input string.
+#'
+#' @return the last character of the input string.
 last_char <- function(x){
   substr(x, nchar(x), nchar(x))
 }
 
-last_digits <- as.numeric(sapply(street_numbers_str, last_char))
+# We use `last_char` to extract the last character of street number string
+# and then convert it to number.
+last_digits <- as.numeric(
+  sapply(street_numbers_str, last_char)
+  )
 
+# Do the Benford test.
 check_benford(last_digits)
 ```
+
+As shown in our output, except digits 4 and 6, there is significant divergence between samples' density and Benford's density. The p-value of chi-squared test also supports this finding. The p-value $0.0$ shows that we can reject the null hypothesis and conclude that the last digits of street numbers don't follow Benford's law.
+
+
+
